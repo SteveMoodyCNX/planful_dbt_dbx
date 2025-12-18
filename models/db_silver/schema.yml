@@ -1,0 +1,236 @@
+version: 2
+
+models:
+  - name: planful_account
+    schema: db_silver
+    description: "Silver layer table for Planful account data"
+    columns:
+      - name: Account_Leaf_ID
+        description: "Unique account identifier"
+        tests:
+          - not_null
+
+      - name: Account
+        description: "Account"
+        tests:
+          - not_null
+
+      - name: MemberType
+        description: "Member type for the account"
+        tests:
+          - not_null
+
+      - name: ActiveStatus
+        description: "Should always be 'Active'"
+        tests:
+        - accepted_values:
+            arguments:
+              values: ['Active']
+
+      - name: ParentMemberId
+        tests:
+          - non_negative:
+              severity: warn
+
+      - name: Attributes
+        description: "Optional array of structs with keys 'Name' and 'Value'"
+        tests:
+          - struct_keys_exist:
+              id_column: Account_Leaf_Line_ID
+          - no_duplicate_attribute_names:
+              id_column: Account_Leaf_Line_ID
+              severity: warn
+              
+  - name: planful_company
+    schema: db_silver
+    description: "Silver layer table for Planful company data"
+    columns:
+      - name: Company_ID
+        description: "Unique company identifier"
+        tests:
+          - not_null:
+              severity: warn
+
+      - name: Company
+        description: "Company name"
+        tests:
+          - not_null:
+              severity: warn
+                
+      - name: MemberType
+        description: "Member type for the company"
+        tests:
+          - not_null:
+              severity: warn
+                
+      - name: ActiveStatus
+        description: "Should always be 'Active'"
+        tests:
+        - accepted_values:
+            arguments:
+              values: ['Active']
+
+      - name: ParentId
+        tests:
+          - non_negative:
+              severity: warn
+              
+      - name: Attributes
+        description: "Optional array of structs with keys 'Name' and 'Value'"
+        tests:
+          - struct_keys_exist:
+              id_column: Company_Leaf_Line_ID
+          - no_duplicate_attribute_names:
+              id_column: Company_Leaf_Line_ID
+
+  - name: planful_gl_data
+    description: "Silver table for Planful GL data with standardized dimensional foreign keys"
+    
+    columns:
+      # Dimensional Foreign Keys
+      - name: Account_Leaf_ID
+        description: "Foreign key to silver_planful_account.Account_Leaf_ID (maps to Code in dimension)"
+        tests:
+          - not_null:
+              config:
+                severity: warn
+          - relationships:
+              to: ref('silver_planful_account')
+              field: Account_Leaf_ID
+              config:
+                severity: warn
+    
+      - name: Location_Leaf_ID
+        description: "Foreign key to silver_planful_location.Location_Leaf_ID (maps to Code in dimension)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_planful_location')
+              field: Location_Leaf_ID
+              config:
+                severity: warn
+      
+      - name: Revenue_Type_Leaf_ID
+        description: "Foreign key to silver_planful_revtype.Revenue_Type_Leaf_ID (maps to Code in dimension)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_planful_revtype')
+              field: Revenue_Type_Leaf_ID
+              config:
+                severity: warn
+      
+      - name: Department_Leaf_ID
+        description: "Foreign key to silver_planful_department.Department_Leaf_ID (maps to Code in dimension)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_planful_department')
+              field: Department_Leaf_ID
+              config:
+                severity: warn
+      
+      - name: MSA_Leaf_ID
+        description: "Foreign key to silver_planful_msa.MSA_Leaf_ID (maps to Code in dimension)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_planful_msa')
+              field: MSA_ID
+              config:
+                severity: warn
+      
+      - name: GAN_Leaf_ID
+        description: "Foreign key to silver_planful_gan.GAN_Leaf_ID (maps to Code in dimension)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_planful_gan')
+              field: GAN_Leaf_ID
+              config:
+                severity: warn
+      
+      # Time Dimensions
+      - name: FiscalYear
+        description: "Fiscal year of the GL data"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 2020
+              max_value: 2030
+      
+      - name: FiscalMonth
+        description: "Fiscal month (1-12)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 12
+      
+      - name: Scenario
+        description: "Scenario type (e.g., Actual, Budget, Forecast)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Actual', 'Budget', 'Forecast']
+              config:
+                severity: warn
+      
+      # Measures
+      - name: MtdAmount
+        description: "Month-to-date amount"
+        tests:
+          - not_null
+      
+      - name: YtdAmount
+        description: "Year-to-date amount"
+        tests:
+          - not_null
+      
+      - name: QtdAmount
+        description: "Quarter-to-date amount"
+        tests:
+          - not_null
+      
+      # Metadata
+      - name: _processed_at
+        description: "Timestamp when dbt processed this record into Silver"
+        tests:
+          - not_null
+      
+
+    
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - Account_Leaf_ID
+            - Company_Leaf_ID
+            - Intercompany_Leaf_ID
+            - Location_Leaf_ID
+            - Revenue_Type_Leaf_ID
+            - Department_Leaf_ID
+            - MSA_Leaf_ID
+            - GAN_Leaf_ID
+            - Reporting
+            - FiscalYear
+            - FiscalMonth
+            - Scenario
+          config:
+            severity: error
+      
+      - dbt_expectations.expect_table_row_count_to_be_between:
+          min_value: 1
+          config:
+            severity: warn
+            
+      - dbt_utils.not_empty_string:
+            config:
+              severity: warn
+            column_name: Scenario
+
+      - dbt_utils.recency:
+          datepart: day
+          field: _processed_at
+          interval: 7
+          config:
+            severity: warn

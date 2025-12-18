@@ -1,0 +1,178 @@
+version: 2
+
+models:
+  - name: dim_account
+    schema: db_gold
+    description: "Gold layer dimension for account data"
+    columns:
+      - name: account_key
+        description: "Unique account identifier"
+        tests:
+          - not_null
+
+      - name: account_name
+        description: "Account"
+        tests:
+          - not_null
+              
+  - name: dim_company
+    schema: db_gold
+    description: "Gold layer dimension for company data"
+              
+  - name: fact_gl_monthly
+    description: "Gold Fact for GL data with standardized dimensional foreign keys"
+    
+    columns:
+      # Dimensional Foreign Keys
+      - name: account_key
+        description: "Foreign key to dim_account.account_key (maps to Code in dimension)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_account')
+              field: account_key
+              config:
+                severity: warn
+      
+      - name: company_key
+        description: "Foreign key to dim_company.company_key (maps to Code in dimension)"
+        tests:
+          - not_null
+            
+      - name: location_key
+        description: "Foreign key to dim_location.location_key (maps to Code in dimension)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_location')
+              field: location_key
+              config:
+                severity: warn
+      
+      - name: revtype_key
+        description: "Foreign key to dim_revtype.revtype_key (maps to Code in dimension)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_revtype')
+              field: revtype_key
+              config:
+                severity: warn
+      
+      - name: department_key
+        description: "Foreign key to dim_department.department_key (maps to Code in dimension)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_department')
+              field: department_key
+              config:
+                severity: warn
+      
+      - name: msa_key
+        description: "Foreign key to dim_msa.msa_key (maps to Code in dimension)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_msa')
+              field: MSA_ID
+              config:
+                severity: warn
+      
+      - name: gan_key
+        description: "Foreign key to dim_gan.gan_key (maps to Code in dimension)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_gan')
+              field: gan_key
+              config:
+                severity: warn
+      
+      # Time Dimensions
+      - name: FiscalYear
+        description: "Fiscal year of the GL data"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 2020
+              max_value: 2030
+      
+      - name: FiscalMonth
+        description: "Fiscal month (1-12)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 12
+      
+
+
+      
+      # Measures
+      - name: MtdAmount
+        description: "Month-to-date amount"
+        tests:
+          - not_null
+      
+      - name: YtdAmount
+        description: "Year-to-date amount"
+        tests:
+          - not_null
+      
+      - name: QtdAmount
+        description: "Quarter-to-date amount"
+        tests:
+          - not_null
+      
+      # Metadata
+      - name: _processed_at
+        description: "Timestamp when dbt processed this record into Silver"
+        tests:
+          - not_null
+      
+      - name: _record_hash
+        description: "MD5 hash of business columns for change detection"
+        tests:
+          - not_null
+      
+      - name: _change_type
+        description: "Type of change: INSERT, UPDATE, NO_CHANGE"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['INSERT', 'UPDATE', 'NO_CHANGE']
+    
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - Account_Leaf_ID
+            - company_key
+            - Intercompany_Leaf_ID
+            - location_key
+            - revtype_key
+            - department_key
+            - MSA_Leaf_ID
+            - GAN_Leaf_ID
+            - Reporting
+            - FiscalYear
+            - FiscalMonth
+            - Scenario
+          config:
+            severity: error
+      
+      - dbt_expectations.expect_table_row_count_to_be_between:
+          min_value: 1
+          config:
+            severity: warn
+            
+      - not_empty:
+            config:
+              severity: warn
+
+      - dbt_utils.recency:
+          datepart: day
+          field: _processed_at
+          interval: 7
+          config:
+            severity: warn

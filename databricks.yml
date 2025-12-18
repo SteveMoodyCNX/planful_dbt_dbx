@@ -1,0 +1,20 @@
+# This is a Databricks asset bundle definition for planful_dbt_dbx.
+# The Databricks extension requires databricks.yml configuration file.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+
+bundle:
+  name: planful_dbt_dbx
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://2326297611073932.2.gcp.databricks.com
+
+  ## Optionally, there could be 'staging' or 'prod' targets here.
+  #
+  # prod:
+  #   workspace:
+  #     host: https://XXX.gcp.databricks.com
+  

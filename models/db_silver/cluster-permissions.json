@@ -1,0 +1,8 @@
+  {
+  "access_control_list": [
+    {
+      "service_principal_name": "svc-pr-dev",
+      "permission_level": "CAN_RESTART"
+    }
+  ]
+}

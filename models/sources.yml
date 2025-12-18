@@ -1,0 +1,97 @@
+sources:
+  - name: db_bronze
+    description: "Bronze layer - raw data from Planful API"
+    database: dev_pff_catalog
+    schema: db_bronze
+    
+    tables:
+      - name: planful_gl_data
+        description: "Raw GL actuals data from Planful API"
+        columns:
+          - name: Scenario
+            description: "Scenario type (Actual, Budget, Forecast)"
+            tests:
+              - not_null
+          
+          - name: FiscalYear
+            description: "Fiscal year"
+            tests:
+              - not_null
+          
+          - name: FiscalMonth
+            description: "Fiscal month (1-12)"
+            tests:
+              - not_null
+          
+          - name: Segment1
+            description: "Account segment code"
+          - name: Segment2
+            description: "Currency segment code"
+          - name: Segment3
+            description: "Intercompany segment code"
+          - name: Segment4
+            description: "Location segment code"
+          - name: Segment5
+            description: "Revenue Type segment code"
+          - name: Segment6
+            description: "Department segment code"
+          - name: Segment7
+            description: "MSA segment code"
+          - name: Segment8
+            description: "GAN segment code"
+          
+          - name: MtdAmount
+            description: "Month-to-date amount"
+          - name: YtdAmount
+            description: "Year-to-date amount"
+          - name: QtdAmount
+            description: "Quarter-to-date amount"
+          
+          - name: _source_loaded_at
+            description: "When the data was loaded from API to Bronze"
+            tests:
+              - not_null
+          
+          - name: load_id
+            description: "Unique identifier for this load batch"
+          
+          - name: _source_file
+            description: "Name of the JSON file in the volume"
+        
+        # Freshness check - warn if Bronze data is stale
+        freshness:
+          warn_after: {count: 7, period: day}
+          error_after: {count: 14, period: day}
+        
+        # Ensure Bronze has data
+        tests:
+          - dbt_expectations.expect_table_row_count_to_be_between:
+              min_value: 1
+              config:
+                severity: warn
+
+      # Add other Bronze tables as needed
+      - name: planful_account
+        description: "Account dimension from Planful"
+      
+      - name: planful_location
+        description: "Location dimension from Planful"
+      
+      - name: planful_department
+        description: "Department dimension from Planful"
+      
+      - name: planful_msa
+        description: "MSA dimension from Planful"
+      
+      - name: planful_gan
+        description: "GAN dimension from Planful"
+      
+      - name: planful_revtype
+        description: "Revenue Type dimension from Planful"
+      
+      - name: planful_company
+        description: "Company dimension from Planful"
+        
+      - name: planful_currency
+        description: "Currency dimension from Planful"   
+
