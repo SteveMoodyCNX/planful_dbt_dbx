@@ -1,4 +1,4 @@
-pff_dbt_dbx_project:
+planful_dbt_dbx_project:
   target: dev
   outputs:
     dev:
