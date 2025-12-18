@@ -1,0 +1,11 @@
+pff_dbt_dbx_project:
+  target: dev
+  outputs:
+    dev:
+      type: databricks
+      catalog: dev_pff_catalog
+      schema: silver
+      host: 2326297611073932.2.gcp.databricks.com
+      http_path: /sql/1.0/warehouses/75a0aed67ee74432
+      token: "{{ env_var('DATABRICKS_TOKEN') }}"
+      threads: 8
